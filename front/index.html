@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stress Level Prediction 🌟</title>
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f7f9fc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    margin: 0;
+    direction: ltr;
+}
+h1 {
+    color: #37474f;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+}
+
+form {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    width: 400px;
+    transition: transform 0.3s ease;
+}
+form:hover { transform: translateY(-5px); }
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0 18px 0;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    transition: 0.3s;
+}
+input[type="number"]:focus { border-color: #1976d2; box-shadow: 0 0 5px #1976d2; }
+
+button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: #1976d2;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+button:hover { background: #1565c0; }
+
+.result, .feature-chart {
+    margin-top: 25px;
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    width: 400px;
+    transition: background 0.5s ease;
+}
+.result h2 { margin: 0; font-size: 1.8rem; }
+
+.feature-bar { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
+.bar { height: 24px; border-radius: 12px; transition: width 1s ease-in-out; }
+.bar-label { font-weight: bold; width: 140px; }
+
+.Low { color: #2e7d32; }
+.Medium { color: #f9a825; }
+.High { color: #d32f2f; }
+</style>
+</head>
+<body>
+
+<h1>Stress Level Prediction 🌟</h1>
+
+<form id="stressForm">
+    <label>Sleep Hours:</label>
+    <input type="number" step="0.1" id="Sleep_Hours" required>
+    <label>Work Hours:</label>
+    <input type="number" step="0.1" id="Work_Hours" required>
+    <label>Steps:</label>
+    <input type="number" step="1" id="Steps" required>
+    <label>Exercise Minutes:</label>
+    <input type="number" step="1" id="Exercise_Minutes" required>
+    <button type="submit">Predict Stress Level</button>
+</form>
+
+<div class="result" id="result" style="display:none;"></div>
+<div class="feature-chart" id="featureChart" style="display:none;">
+    <h3>Feature Influence (%)</h3>
+    <div id="barsContainer"></div>
+</div>
+
+<script>
+const form = document.getElementById("stressForm");
+const resultDiv = document.getElementById("result");
+const chartDiv = document.getElementById("featureChart");
+const barsContainer = document.getElementById("barsContainer");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = {
+        Sleep_Hours: parseFloat(document.getElementById("Sleep_Hours").value),
+        Work_Hours: parseFloat(document.getElementById("Work_Hours").value),
+        Steps: parseFloat(document.getElementById("Steps").value),
+        Exercise_Minutes: parseFloat(document.getElementById("Exercise_Minutes").value)
+    };
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/feature_influence", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+        });
+        const json = await response.json();
+
+        // Display prediction
+        resultDiv.style.display = "block";
+        const emoji = json.predicted_stress_level === "High" ? "🔥" : json.predicted_stress_level === "Medium" ? "⚠️" : "✅";
+        resultDiv.style.background = json.predicted_stress_level === "High" ? "#ffebee" : json.predicted_stress_level === "Medium" ? "#fffde7" : "#e8f5e9";
+        resultDiv.innerHTML = `
+            <h2 class="${json.predicted_stress_level}">Predicted Stress Level: ${json.predicted_stress_level} ${emoji}</h2>
+            <p>Most Influential Feature: <b>${json.most_influential_feature}</b></p>
+        `;
+
+        // Feature Influence Bar Chart
+        chartDiv.style.display = "block";
+        barsContainer.innerHTML = "";
+        const features = json.feature_influence_percent;
+        const colors = ["#42a5f5","#66bb6a","#ffa726","#ab47bc"];
+        let i = 0;
+        for (const [feature, percent] of Object.entries(features)) {
+            const barDiv = document.createElement("div");
+            barDiv.classList.add("feature-bar");
+            barDiv.innerHTML = `
+                <span class="bar-label">${feature} (${percent}%)</span>
+                <div class="bar" style="width:0%; background:${colors[i++]};"></div>
+            `;
+            barsContainer.appendChild(barDiv);
+            setTimeout(() => {
+                barDiv.querySelector(".bar").style.width = percent + "%";
+            }, 100);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Error connecting to server. Make sure the server is running!");
+    }
+});
+</script>
+</body>
+</html>
